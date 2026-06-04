@@ -1,0 +1,10 @@
+body {
+  margin: 0;
+  background: #f7f8fb;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
