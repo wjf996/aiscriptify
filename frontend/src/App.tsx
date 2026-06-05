@@ -23,6 +23,8 @@ import {
   IconDownload,
   IconFileText,
   IconFileCode,
+  IconFileImport,
+  IconTrash,
   IconPencil,
   IconPlayerPlay,
   IconReload,
@@ -31,7 +33,7 @@ import {
   IconWand,
   IconUsers,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 
 import {
   PolishSuggestion,
@@ -55,6 +57,8 @@ const sampleNovel = `第一章 雨夜归来
 
 第三章 天台对峙
 两人带着日记来到天台，遇见一直暗中跟踪他们的沈舟。沈舟承认自己想拿走残稿，却也揭开了林夏父亲当年离开的真相。`;
+
+const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024;
 
 type YamlStatus = {
   valid: boolean;
@@ -166,6 +170,7 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 function App() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [title, setTitle] = useState("");
   const [style, setStyle] = useState<ScriptStyle>("screenplay");
   const [novelText, setNovelText] = useState("");
@@ -185,6 +190,20 @@ function App() {
   const [polishSource, setPolishSource] = useState<"ai" | "fallback" | "">("");
   const [yamlDraft, setYamlDraft] = useState(sampleYaml);
   const [yamlStatus, setYamlStatus] = useState<YamlStatus>(analyzeYamlText(sampleYaml));
+
+  const resetGeneratedState = () => {
+    setChapterCount(0);
+    setCharacterCount(0);
+    setSceneCount(0);
+    setCharacterNames([]);
+    setSceneSummaries([]);
+    setChapterSummaries([]);
+    setSelectedChapter("all");
+    setPolishSuggestions([]);
+    setPolishSource("");
+    setYamlDraft(sampleYaml);
+    setYamlStatus(analyzeYamlText(sampleYaml));
+  };
 
   const handleValidate = async () => {
     setErrorMessage("");
@@ -282,14 +301,67 @@ function App() {
     }
   };
 
+  const handleImportNovelFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const fileName = file.name;
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    if (!extension || !["txt", "md"].includes(extension)) {
+      setErrorMessage("仅支持导入 .txt 或 .md 小说文本文件");
+      setStatusMessage("文件导入失败");
+      return;
+    }
+
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      setErrorMessage("文件大小不能超过 2MB，请导入较短的小说片段");
+      setStatusMessage("文件导入失败");
+      return;
+    }
+
+    try {
+      const importedText = await file.text();
+      setNovelText(importedText);
+      if (!title.trim()) {
+        setTitle(fileName.replace(/\.(txt|md)$/i, ""));
+      }
+      resetGeneratedState();
+      setErrorMessage("");
+      setStatusMessage(`已导入 ${fileName}，共 ${importedText.length} 字`);
+    } catch {
+      setErrorMessage("文件读取失败，请检查文件编码或重新选择文件");
+      setStatusMessage("文件导入失败");
+    }
+  };
+
+  const handleClearInput = () => {
+    setNovelText("");
+    resetGeneratedState();
+    setErrorMessage("");
+    setStatusMessage("已清空小说输入和生成结果");
+  };
+
+  const handleFillSample = () => {
+    setNovelText(sampleNovel);
+    if (!title.trim()) {
+      setTitle("雨夜残稿");
+    }
+    resetGeneratedState();
+    setErrorMessage("");
+    setStatusMessage("已填充示例小说，可直接生成剧本 YAML");
+  };
+
   const handleDownloadYaml = () => {
     const blob = new Blob([yamlDraft], { type: "text/yaml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const safeTitle = title.trim() || "aiscriptify-script";
+    const safeTitle = title.trim() || "aiscriptify";
 
     link.href = url;
-    link.download = `${safeTitle}.yaml`;
+    link.download = `${safeTitle}-script.yaml`;
     link.click();
     URL.revokeObjectURL(url);
     setStatusMessage("已下载当前 YAML 内容");
@@ -378,61 +450,89 @@ function App() {
                 <Grid.Col span={{ base: 12, md: 6 }}>
                   <Paper withBorder p="lg" radius="md" className="workspace-card">
                     <Stack>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <IconBook2 size={20} />
-                        <Title order={4}>小说输入</Title>
+                      <Group justify="space-between">
+                        <Group gap="xs">
+                          <IconBook2 size={20} />
+                          <Title order={4}>小说输入</Title>
+                        </Group>
+                        <Badge variant="outline" color="blue">
+                          至少 3 章
+                        </Badge>
                       </Group>
-                      <Badge variant="outline" color="blue">
-                        至少 3 章
-                      </Badge>
-                    </Group>
 
-                    <TextInput
-                      label="作品标题"
-                      placeholder="请输入小说标题"
-                      value={title}
-                      onChange={(event) => setTitle(event.currentTarget.value)}
-                    />
+                      <TextInput
+                        label="作品标题"
+                        placeholder="请输入小说标题"
+                        value={title}
+                        onChange={(event) => setTitle(event.currentTarget.value)}
+                      />
 
-                    <Select
-                      label="剧本类型"
-                      placeholder="请选择剧本类型"
-                      defaultValue="screenplay"
-                      value={style}
-                      onChange={(value) => setStyle((value as ScriptStyle | null) ?? "screenplay")}
-                      data={[
-                        { value: "screenplay", label: "影视剧" },
-                        { value: "short_drama", label: "短剧" },
-                        { value: "audio_drama", label: "广播剧" },
-                      ]}
-                    />
+                      <Select
+                        label="剧本类型"
+                        placeholder="请选择剧本类型"
+                        defaultValue="screenplay"
+                        value={style}
+                        onChange={(value) => setStyle((value as ScriptStyle | null) ?? "screenplay")}
+                        data={[
+                          { value: "screenplay", label: "影视剧" },
+                          { value: "short_drama", label: "短剧" },
+                          { value: "audio_drama", label: "广播剧" },
+                        ]}
+                      />
 
-                    <Textarea
-                      label="小说文本"
-                      placeholder="请粘贴至少 3 个章节的小说文本..."
-                      value={novelText}
-                      onChange={(event) => setNovelText(event.currentTarget.value)}
-                      minRows={18}
-                      styles={{ input: { height: 520, overflowY: "auto", resize: "vertical" } }}
-                    />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".txt,.md,text/plain,text/markdown"
+                        hidden
+                        onChange={handleImportNovelFile}
+                      />
 
-                    <Group justify="flex-end">
-                      <Button
-                        variant="light"
-                        leftSection={<IconReload size={16} />}
-                        onClick={() => setNovelText(sampleNovel)}
-                      >
-                        填充示例
-                      </Button>
-                      <Button
-                        leftSection={<IconPlayerPlay size={18} />}
-                        loading={isValidating}
-                        onClick={handleValidate}
-                      >
-                        生成剧本 YAML
-                      </Button>
-                    </Group>
+                      <Textarea
+                        label="小说文本"
+                        placeholder="请粘贴至少 3 个章节的小说文本，或导入 .txt / .md 文件..."
+                        value={novelText}
+                        onChange={(event) => setNovelText(event.currentTarget.value)}
+                        minRows={18}
+                        styles={{ input: { height: 520, overflowY: "auto", resize: "vertical" } }}
+                      />
+
+                      <Group justify="space-between">
+                        <Group gap="xs">
+                          <Button
+                            variant="light"
+                            leftSection={<IconFileImport size={16} />}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            导入文件
+                          </Button>
+                          <Button
+                            variant="subtle"
+                            color="gray"
+                            leftSection={<IconTrash size={16} />}
+                            onClick={handleClearInput}
+                          >
+                            清空输入
+                          </Button>
+                        </Group>
+
+                        <Group gap="xs">
+                          <Button
+                            variant="light"
+                            leftSection={<IconReload size={16} />}
+                            onClick={handleFillSample}
+                          >
+                            填充示例
+                          </Button>
+                          <Button
+                            leftSection={<IconPlayerPlay size={18} />}
+                            loading={isValidating}
+                            onClick={handleValidate}
+                          >
+                            生成剧本 YAML
+                          </Button>
+                        </Group>
+                      </Group>
                     </Stack>
                   </Paper>
                 </Grid.Col>
