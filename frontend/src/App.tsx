@@ -7,6 +7,7 @@ import {
   Grid,
   Group,
   Paper,
+  SegmentedControl,
   Select,
   Stack,
   Text,
@@ -45,6 +46,15 @@ type YamlStatus = {
   message: string;
 };
 
+type ScriptChapterSummary = {
+  value: string;
+  label: string;
+  title: string;
+  summary: string;
+  characters: string[];
+  scenes: string[];
+};
+
 function analyzeYamlText(yamlText: string): YamlStatus {
   const trimmed = yamlText.trim();
   if (!trimmed) {
@@ -68,6 +78,78 @@ function analyzeYamlText(yamlText: string): YamlStatus {
   return { valid: true, message: "YAML 基础结构有效，可继续编辑和打磨" };
 }
 
+function buildChapterSummaries(script: Record<string, unknown>): ScriptChapterSummary[] {
+  const chapters = Array.isArray(script.chapters) ? script.chapters : [];
+
+  return chapters
+    .map((chapter, index) => {
+      if (!isRecord(chapter)) {
+        return null;
+      }
+
+      const chapterTitle = getText(chapter.chapter_title) || `第 ${index + 1} 章`;
+      const chapterSummary = getText(chapter.summary) || "本章摘要待补充";
+      const scenes = Array.isArray(chapter.scenes) ? chapter.scenes : [];
+      const characters = uniqueStrings(
+        scenes.flatMap((scene) => {
+          if (!isRecord(scene) || !Array.isArray(scene.characters)) {
+            return [];
+          }
+          return scene.characters.map((character) => getText(character)).filter(Boolean);
+        }),
+      );
+      const sceneSummaries = scenes
+        .map((scene, sceneIndex) => {
+          if (!isRecord(scene)) {
+            return "";
+          }
+
+          const location = cleanScenePart(scene.location);
+          const time = cleanScenePart(scene.time);
+          const sceneId = getText(scene.scene_id) || `scene_${sceneIndex + 1}`;
+          if (location && time) {
+            return `${location} · ${time}`;
+          }
+          return location || time || sceneId;
+        })
+        .filter(Boolean);
+
+      return {
+        value: String(index),
+        label: `第 ${index + 1} 章`,
+        title: chapterTitle,
+        summary: chapterSummary,
+        characters,
+        scenes: sceneSummaries,
+      };
+    })
+    .filter((chapter): chapter is ScriptChapterSummary => chapter !== null);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getText(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+}
+
+function cleanScenePart(value: unknown): string {
+  const text = getText(value);
+  return text === "待补充地点" || text === "待补充时间" ? "" : text;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (!value || seen.has(value)) {
+      return false;
+    }
+    seen.add(value);
+    return true;
+  });
+}
+
 function App() {
   const [title, setTitle] = useState("");
   const [style, setStyle] = useState<ScriptStyle>("screenplay");
@@ -77,6 +159,8 @@ function App() {
   const [sceneCount, setSceneCount] = useState(0);
   const [characterNames, setCharacterNames] = useState<string[]>([]);
   const [sceneSummaries, setSceneSummaries] = useState<string[]>([]);
+  const [chapterSummaries, setChapterSummaries] = useState<ScriptChapterSummary[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState("all");
   const [statusMessage, setStatusMessage] = useState("等待输入小说文本");
   const [errorMessage, setErrorMessage] = useState("");
   const [isValidating, setIsValidating] = useState(false);
@@ -98,6 +182,8 @@ function App() {
         setSceneCount(0);
         setCharacterNames([]);
         setSceneSummaries([]);
+        setChapterSummaries([]);
+        setSelectedChapter("all");
         setStatusMessage(validation.message);
         setErrorMessage(validation.message);
         return;
@@ -109,6 +195,8 @@ function App() {
       setSceneCount(result.scene_count);
       setCharacterNames(result.character_names);
       setSceneSummaries(result.scene_summaries);
+      setChapterSummaries(buildChapterSummaries(result.script));
+      setSelectedChapter("all");
       setYamlDraft(result.yaml);
       setYamlStatus({
         valid: result.yaml_valid,
@@ -162,6 +250,11 @@ function App() {
     URL.revokeObjectURL(url);
     setStatusMessage("已下载当前 YAML 内容");
   };
+
+  const selectedChapterSummary =
+    selectedChapter === "all"
+      ? null
+      : chapterSummaries.find((chapter) => chapter.value === selectedChapter) ?? null;
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -233,8 +326,8 @@ function App() {
                       placeholder="请粘贴至少 3 个章节的小说文本..."
                       value={novelText}
                       onChange={(event) => setNovelText(event.currentTarget.value)}
-                      autosize
-                      minRows={14}
+                      minRows={18}
+                      styles={{ input: { height: 520, overflowY: "auto", resize: "vertical" } }}
                     />
 
                     <Group justify="flex-end">
@@ -307,6 +400,77 @@ function App() {
                       )}
                     </Paper>
 
+                    {chapterSummaries.length > 0 && (
+                      <Paper withBorder p="sm" radius="md">
+                        <Stack gap="xs">
+                          <SegmentedControl
+                            fullWidth
+                            value={selectedChapter}
+                            onChange={setSelectedChapter}
+                            data={[
+                              { value: "all", label: "全部剧本" },
+                              ...chapterSummaries.map((chapter) => ({
+                                value: chapter.value,
+                                label: chapter.label,
+                              })),
+                            ]}
+                          />
+
+                          {selectedChapterSummary ? (
+                            <Stack gap={6}>
+                              <Group justify="space-between" gap="xs">
+                                <Text size="sm" fw={700}>
+                                  {selectedChapterSummary.title}
+                                </Text>
+                                <Badge variant="light" color="blue">
+                                  章节摘要
+                                </Badge>
+                              </Group>
+                              <Text size="sm" c="dimmed">
+                                {selectedChapterSummary.summary}
+                              </Text>
+                              <Group gap={6}>
+                                <Text size="sm" fw={600}>
+                                  本章角色
+                                </Text>
+                                {selectedChapterSummary.characters.length > 0 ? (
+                                  selectedChapterSummary.characters.map((name) => (
+                                    <Badge key={name} color="teal" variant="light">
+                                      {name}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Text size="sm" c="dimmed">
+                                    待补充
+                                  </Text>
+                                )}
+                              </Group>
+                              <Group gap={6}>
+                                <Text size="sm" fw={600}>
+                                  本章场景
+                                </Text>
+                                {selectedChapterSummary.scenes.length > 0 ? (
+                                  selectedChapterSummary.scenes.map((scene) => (
+                                    <Badge key={scene} color="gray" variant="light">
+                                      {scene}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Text size="sm" c="dimmed">
+                                    待补充
+                                  </Text>
+                                )}
+                              </Group>
+                            </Stack>
+                          ) : (
+                            <Text size="sm" c="dimmed">
+                              当前显示完整 YAML，可切换章节查看单章摘要，但编辑区保持完整结构。
+                            </Text>
+                          )}
+                        </Stack>
+                      </Paper>
+                    )}
+
                     <Textarea
                       value={yamlDraft}
                       onChange={(event) => {
@@ -314,9 +478,15 @@ function App() {
                         setYamlDraft(nextYaml);
                         setYamlStatus(analyzeYamlText(nextYaml));
                       }}
-                      autosize
-                      minRows={18}
-                      styles={{ input: { fontFamily: "Consolas, monospace" } }}
+                      minRows={22}
+                      styles={{
+                        input: {
+                          fontFamily: "Consolas, monospace",
+                          height: 620,
+                          overflowY: "auto",
+                          resize: "vertical",
+                        },
+                      }}
                     />
 
                     <Alert
