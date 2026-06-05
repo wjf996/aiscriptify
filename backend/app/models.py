@@ -28,6 +28,21 @@ class ScriptConversionRequest(BaseModel):
 
 class ScriptConversionResponse(BaseModel):
     chapter_count: int
+    character_count: int = 0
+    scene_count: int = 0
+    character_names: list[str] = Field(default_factory=list)
+    scene_summaries: list[str] = Field(default_factory=list)
     script: dict
     yaml: str = ""
+    yaml_valid: bool = False
+    yaml_error: str = ""
     warnings: list[str] = Field(default_factory=list)
+
+
+class YamlValidationRequest(BaseModel):
+    yaml: str = Field(min_length=1)
+
+
+class YamlValidationResponse(BaseModel):
+    valid: bool
+    message: str

@@ -38,6 +38,6 @@ def build_fallback_script(title: str, text: str, style: str) -> dict:
 
 
 def _guess_character_names(text: str) -> list[str]:
-    candidates = ["林夏", "周远", "张三", "李四", "王五"]
+    candidates = ["林夏", "周远", "沈舟", "张三", "李四", "王五"]
     names = [name for name in candidates if name in text]
     return names or ["角色"]
