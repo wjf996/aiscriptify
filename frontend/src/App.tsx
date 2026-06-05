@@ -85,6 +85,18 @@ type HighlightedYamlLine = {
   raw: string;
 };
 
+type GenerationStep = {
+  label: string;
+  status: "pending" | "active" | "done";
+};
+
+const initialGenerationSteps: GenerationStep[] = [
+  { label: "校验章节", status: "pending" },
+  { label: "调用 AI", status: "pending" },
+  { label: "整理 YAML", status: "pending" },
+  { label: "生成摘要", status: "pending" },
+];
+
 function analyzeYamlText(yamlText: string): YamlStatus {
   const trimmed = yamlText.trim();
   if (!trimmed) {
@@ -252,6 +264,7 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("等待输入小说文本");
   const [errorMessage, setErrorMessage] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [generationSteps, setGenerationSteps] = useState<GenerationStep[]>(initialGenerationSteps);
   const [isCheckingYaml, setIsCheckingYaml] = useState(false);
   const [isGeneratingPolish, setIsGeneratingPolish] = useState(false);
   const [polishSuggestions, setPolishSuggestions] = useState<PolishSuggestion[]>([]);
@@ -271,12 +284,27 @@ function App() {
     setPolishSource("");
     setYamlDraft(sampleYaml);
     setYamlStatus(analyzeYamlText(sampleYaml));
+    setGenerationSteps(initialGenerationSteps);
+  };
+
+  const updateGenerationStep = (activeIndex: number) => {
+    setGenerationSteps(
+      initialGenerationSteps.map((step, index) => ({
+        ...step,
+        status: index < activeIndex ? "done" : index === activeIndex ? "active" : "pending",
+      })),
+    );
+  };
+
+  const completeGenerationSteps = () => {
+    setGenerationSteps(initialGenerationSteps.map((step) => ({ ...step, status: "done" })));
   };
 
   const handleValidate = async () => {
     setErrorMessage("");
-    setStatusMessage("正在校验章节并调用 AI...");
+    setStatusMessage("正在校验章节...");
     setIsValidating(true);
+    updateGenerationStep(0);
 
     try {
       const validation = await validateChapters({ title, text: novelText, style });
@@ -294,12 +322,18 @@ function App() {
         return;
       }
 
+      updateGenerationStep(1);
+      setStatusMessage("正在调用 AI 生成剧本初稿...");
       const result = await convertNovel({ title, text: novelText, style });
+      updateGenerationStep(2);
+      setStatusMessage("正在整理 YAML 结构...");
       setChapterCount(result.chapter_count);
       setCharacterCount(result.character_count);
       setSceneCount(result.scene_count);
       setCharacterNames(result.character_names);
       setSceneSummaries(result.scene_summaries);
+      updateGenerationStep(3);
+      setStatusMessage("正在生成章节、角色和场景摘要...");
       setChapterSummaries(buildChapterSummaries(result.script));
       setSelectedChapter("all");
       setPolishSuggestions([]);
@@ -314,8 +348,9 @@ function App() {
       setStatusMessage(
         result.warnings.length > 0
           ? result.warnings[0]
-          : "YAML 剧本初稿生成完成，可继续编辑和打磨",
+          : "YAML 剧本初稿生成完成，可以查看结构摘要、生成打磨建议或导出 YAML",
       );
+      completeGenerationSteps();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "AI 转换失败");
       setStatusMessage("转换失败");
@@ -592,6 +627,29 @@ function App() {
                           </Text>
                         </Group>
                       </Paper>
+
+                      {isValidating && (
+                        <Paper withBorder p="sm" radius="md" className="summary-panel">
+                          <Stack gap="xs">
+                            <Text size="sm" fw={700}>
+                              生成进度
+                            </Text>
+                            <Group gap="xs">
+                              {generationSteps.map((step) => (
+                                <Badge
+                                  key={step.label}
+                                  color={
+                                    step.status === "done" ? "teal" : step.status === "active" ? "blue" : "gray"
+                                  }
+                                  variant={step.status === "active" ? "filled" : "light"}
+                                >
+                                  {step.label}
+                                </Badge>
+                              ))}
+                            </Group>
+                          </Stack>
+                        </Paper>
+                      )}
 
                       <Group justify="space-between">
                         <Group gap="xs">

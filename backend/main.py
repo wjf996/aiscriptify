@@ -84,7 +84,7 @@ def convert_script(request: ScriptConversionRequest) -> ScriptConversionResponse
         script = convert_novel_to_script(title=request.title, text=request.text, style=request.style)
     except HTTPException as exc:
         script = build_fallback_script(title=request.title, text=request.text, style=request.style)
-        warnings.append(f"AI 调用失败，已生成规则兜底剧本草稿：{exc.detail}")
+        warnings.append(f"AI 暂时不可用，已生成规则兜底草稿。你仍然可以继续编辑、校验和导出 YAML。原因：{exc.detail}")
 
     script_yaml = build_script_yaml(script)
     yaml_valid, yaml_error = validate_yaml_text(script_yaml)
