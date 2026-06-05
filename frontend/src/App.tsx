@@ -59,6 +59,8 @@ const sampleNovel = `第一章 雨夜归来
 两人带着日记来到天台，遇见一直暗中跟踪他们的沈舟。沈舟承认自己想拿走残稿，却也揭开了林夏父亲当年离开的真相。`;
 
 const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024;
+const CHAPTER_TITLE_PATTERN =
+  /^\s*(第[一二三四五六七八九十百千万零〇两\d]+[章节回幕集]|Chapter\s+\d+|CHAPTER\s+\d+|chapter\s+\d+)[^\n]*/gm;
 
 type YamlStatus = {
   valid: boolean;
@@ -176,6 +178,24 @@ function uniqueStrings(values: string[]): string[] {
     seen.add(value);
     return true;
   });
+}
+
+function countNovelCharacters(text: string): number {
+  return text.replace(/\s/g, "").length;
+}
+
+function countNovelChapters(text: string): number {
+  return [...text.matchAll(CHAPTER_TITLE_PATTERN)].length;
+}
+
+function getInputQualityMessage(chapterTotal: number, characterTotal: number): string {
+  if (characterTotal === 0) {
+    return "等待输入小说文本";
+  }
+  if (chapterTotal < 3) {
+    return `已识别 ${chapterTotal} 章 / ${characterTotal} 字，至少需要 3 章`;
+  }
+  return `已识别 ${chapterTotal} 章 / ${characterTotal} 字，可生成剧本 YAML`;
 }
 
 function buildHighlightedYamlLines(yamlText: string): HighlightedYamlLine[] {
@@ -378,7 +398,12 @@ function App() {
       }
       resetGeneratedState();
       setErrorMessage("");
-      setStatusMessage(`已导入 ${fileName}，共 ${importedText.length} 字`);
+      setStatusMessage(
+        `已导入 ${fileName}，${getInputQualityMessage(
+          countNovelChapters(importedText),
+          countNovelCharacters(importedText),
+        )}`,
+      );
     } catch {
       setErrorMessage("文件读取失败，请检查文件编码或重新选择文件");
       setStatusMessage("文件导入失败");
@@ -399,7 +424,9 @@ function App() {
     }
     resetGeneratedState();
     setErrorMessage("");
-    setStatusMessage("已填充示例小说，可直接生成剧本 YAML");
+    setStatusMessage(
+      `已填充示例小说，${getInputQualityMessage(countNovelChapters(sampleNovel), countNovelCharacters(sampleNovel))}`,
+    );
   };
 
   const handleDownloadYaml = () => {
@@ -419,6 +446,10 @@ function App() {
     selectedChapter === "all"
       ? null
       : chapterSummaries.find((chapter) => chapter.value === selectedChapter) ?? null;
+  const inputCharacterCount = countNovelCharacters(novelText);
+  const inputChapterCount = countNovelChapters(novelText);
+  const inputReady = inputChapterCount >= 3;
+  const inputQualityMessage = getInputQualityMessage(inputChapterCount, inputCharacterCount);
   const feedbackMessage = yamlStatus.valid ? statusMessage : yamlStatus.message;
   const feedbackColor = errorMessage ? "red" : yamlStatus.valid ? "teal" : "yellow";
   const highlightedYamlLines = buildHighlightedYamlLines(yamlDraft);
@@ -504,8 +535,8 @@ function App() {
                           <IconBook2 size={20} />
                           <Title order={4}>小说输入</Title>
                         </Group>
-                        <Badge variant="outline" color="blue">
-                          至少 3 章
+                        <Badge variant="outline" color={inputReady ? "teal" : "blue"}>
+                          {inputReady ? "可生成" : "至少 3 章"}
                         </Badge>
                       </Group>
 
@@ -546,6 +577,22 @@ function App() {
                         styles={{ input: { height: 520, overflowY: "auto", resize: "vertical" } }}
                       />
 
+                      <Paper withBorder p="sm" radius="md" className="summary-panel">
+                        <Group justify="space-between" align="center">
+                          <Group gap="xs">
+                            <Badge color={inputReady ? "teal" : "yellow"} variant="light">
+                              章节 {inputChapterCount}
+                            </Badge>
+                            <Badge color="gray" variant="light">
+                              字数 {inputCharacterCount}
+                            </Badge>
+                          </Group>
+                          <Text size="sm" c={inputReady ? "teal" : "dimmed"}>
+                            {inputQualityMessage}
+                          </Text>
+                        </Group>
+                      </Paper>
+
                       <Group justify="space-between">
                         <Group gap="xs">
                           <Button
@@ -573,6 +620,9 @@ function App() {
                           >
                             填充示例
                           </Button>
+                          <Badge color="gray" variant="light">
+                            示例含 3 章
+                          </Badge>
                           <Button
                             leftSection={<IconPlayerPlay size={18} />}
                             loading={isValidating}
