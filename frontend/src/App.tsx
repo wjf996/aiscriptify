@@ -74,6 +74,15 @@ type ScriptChapterSummary = {
   scenes: string[];
 };
 
+type HighlightedYamlLine = {
+  lineNumber: number;
+  beforeKey: string;
+  key: string;
+  afterKey: string;
+  keyClassName: string;
+  raw: string;
+};
+
 function analyzeYamlText(yamlText: string): YamlStatus {
   const trimmed = yamlText.trim();
   if (!trimmed) {
@@ -167,6 +176,45 @@ function uniqueStrings(values: string[]): string[] {
     seen.add(value);
     return true;
   });
+}
+
+function buildHighlightedYamlLines(yamlText: string): HighlightedYamlLine[] {
+  return yamlText.split(/\r?\n/).map((line, index) => {
+    const match = line.match(/^(\s*-?\s*)([A-Za-z_][\w-]*)(:.*)$/);
+    if (!match) {
+      return {
+        lineNumber: index + 1,
+        beforeKey: "",
+        key: "",
+        afterKey: "",
+        keyClassName: "",
+        raw: line,
+      };
+    }
+
+    const key = match[2];
+    return {
+      lineNumber: index + 1,
+      beforeKey: match[1],
+      key,
+      afterKey: match[3],
+      keyClassName: getYamlKeyClassName(key),
+      raw: line,
+    };
+  });
+}
+
+function getYamlKeyClassName(key: string): string {
+  if (["title", "script_type", "chapter_title", "summary"].includes(key)) {
+    return "yaml-key-blue";
+  }
+  if (["characters", "speaker", "line"].includes(key)) {
+    return "yaml-key-orange";
+  }
+  if (["chapters", "scenes", "location", "time", "action", "dialogues"].includes(key)) {
+    return "yaml-key-green";
+  }
+  return "yaml-key-default";
 }
 
 function App() {
@@ -373,6 +421,7 @@ function App() {
       : chapterSummaries.find((chapter) => chapter.value === selectedChapter) ?? null;
   const feedbackMessage = yamlStatus.valid ? statusMessage : yamlStatus.message;
   const feedbackColor = errorMessage ? "red" : yamlStatus.valid ? "teal" : "yellow";
+  const highlightedYamlLines = buildHighlightedYamlLines(yamlDraft);
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -697,6 +746,49 @@ function App() {
                         </Stack>
                       </Paper>
                     )}
+
+                    <Paper withBorder p="sm" radius="md" className="code-preview-panel">
+                      <Stack gap="xs">
+                        <Group justify="space-between">
+                          <Group gap="xs">
+                            <IconFileCode size={18} />
+                            <Text size="sm" fw={700}>
+                              YAML 结构预览
+                            </Text>
+                          </Group>
+                          <Group gap={6}>
+                            <Badge color="blue" variant="light">
+                              标题/摘要
+                            </Badge>
+                            <Badge color="orange" variant="light">
+                              角色/对白
+                            </Badge>
+                            <Badge color="green" variant="light">
+                              场景/动作
+                            </Badge>
+                          </Group>
+                        </Group>
+
+                        <div className="yaml-code-viewer">
+                          {highlightedYamlLines.map((line) => (
+                            <div key={line.lineNumber} className="yaml-code-line">
+                              <span className="yaml-line-number">{line.lineNumber}</span>
+                              <code className="yaml-line-content">
+                                {line.key ? (
+                                  <>
+                                    <span>{line.beforeKey}</span>
+                                    <span className={line.keyClassName}>{line.key}</span>
+                                    <span>{line.afterKey}</span>
+                                  </>
+                                ) : (
+                                  line.raw || " "
+                                )}
+                              </code>
+                            </div>
+                          ))}
+                        </div>
+                      </Stack>
+                    </Paper>
 
                     <Textarea
                       value={yamlDraft}

@@ -93,3 +93,63 @@ textarea {
 .mantine-SegmentedControl-root {
   background: #eef6f6;
 }
+
+.code-preview-panel {
+  background: #fbfdff;
+  border-color: #dce3ea;
+}
+
+.yaml-code-viewer {
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid #dce3ea;
+  border-radius: 8px;
+  background: #0f172a;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.yaml-code-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-height: 24px;
+}
+
+.yaml-code-line:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.yaml-line-number {
+  padding: 0 10px;
+  color: #64748b;
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.yaml-line-content {
+  padding: 0 12px;
+  color: #e2e8f0;
+  white-space: pre;
+}
+
+.yaml-key-blue {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.yaml-key-orange {
+  color: #fb923c;
+  font-weight: 700;
+}
+
+.yaml-key-green {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.yaml-key-default {
+  color: #c4b5fd;
+  font-weight: 700;
+}
