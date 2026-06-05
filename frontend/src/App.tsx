@@ -10,6 +10,7 @@ import {
   SegmentedControl,
   Select,
   Stack,
+  Tabs,
   Text,
   TextInput,
   Textarea,
@@ -822,101 +823,124 @@ function App() {
                       </Paper>
                     )}
 
-                    {polishSuggestions.length > 0 && (
-                      <Paper withBorder p="sm" radius="md" className="summary-panel">
-                        <Stack gap="xs">
-                          <Group justify="space-between">
+                    <Tabs defaultValue="preview" className="right-panel-tabs">
+                      <Tabs.List grow>
+                        <Tabs.Tab value="preview">YAML 预览</Tabs.Tab>
+                        <Tabs.Tab value="edit">YAML 编辑</Tabs.Tab>
+                        <Tabs.Tab value="polish">打磨建议</Tabs.Tab>
+                      </Tabs.List>
+
+                      <Tabs.Panel value="preview" pt="sm">
+                        <Paper withBorder p="sm" radius="md" className="code-preview-panel">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Group gap="xs">
+                                <IconFileCode size={18} />
+                                <Text size="sm" fw={700}>
+                                  YAML 结构预览
+                                </Text>
+                              </Group>
+                              <Group gap={6}>
+                                <Badge color="blue" variant="light">
+                                  标题/摘要
+                                </Badge>
+                                <Badge color="orange" variant="light">
+                                  角色/对白
+                                </Badge>
+                                <Badge color="green" variant="light">
+                                  场景/动作
+                                </Badge>
+                              </Group>
+                            </Group>
+
+                            <div className="yaml-code-viewer">
+                              {highlightedYamlLines.map((line) => (
+                                <div key={line.lineNumber} className="yaml-code-line">
+                                  <span className="yaml-line-number">{line.lineNumber}</span>
+                                  <code className="yaml-line-content">
+                                    {line.key ? (
+                                      <>
+                                        <span>{line.beforeKey}</span>
+                                        <span className={line.keyClassName}>{line.key}</span>
+                                        <span>{line.afterKey}</span>
+                                      </>
+                                    ) : (
+                                      line.raw || " "
+                                    )}
+                                  </code>
+                                </div>
+                              ))}
+                            </div>
+                          </Stack>
+                        </Paper>
+                      </Tabs.Panel>
+
+                      <Tabs.Panel value="edit" pt="sm">
+                        <Textarea
+                          value={yamlDraft}
+                          onChange={(event) => {
+                            const nextYaml = event.currentTarget.value;
+                            setYamlDraft(nextYaml);
+                            setYamlStatus(analyzeYamlText(nextYaml));
+                            setPolishSuggestions([]);
+                            setPolishSource("");
+                          }}
+                          minRows={22}
+                          styles={{
+                            input: {
+                              fontFamily: "Consolas, monospace",
+                              height: 620,
+                              overflowY: "auto",
+                              resize: "vertical",
+                            },
+                          }}
+                        />
+                      </Tabs.Panel>
+
+                      <Tabs.Panel value="polish" pt="sm">
+                        {polishSuggestions.length > 0 ? (
+                          <Paper withBorder p="sm" radius="md" className="summary-panel">
+                            <Stack gap="xs">
+                              <Group justify="space-between">
+                                <Group gap="xs">
+                                  <IconWand size={18} />
+                                  <Text size="sm" fw={700}>
+                                    剧本打磨建议
+                                  </Text>
+                                </Group>
+                                <Badge color={polishSource === "ai" ? "teal" : "yellow"} variant="light">
+                                  {polishSource === "ai" ? "AI 建议" : "规则兜底建议"}
+                                </Badge>
+                              </Group>
+
+                              <Stack gap={6}>
+                                {polishSuggestions.map((item) => (
+                                  <Paper key={`${item.category}-${item.suggestion}`} p="xs" radius="md" bg="white">
+                                    <Stack gap={2}>
+                                      <Text size="sm" fw={700}>
+                                        {item.category}
+                                      </Text>
+                                      <Text size="sm" c="dimmed">
+                                        {item.suggestion}
+                                      </Text>
+                                    </Stack>
+                                  </Paper>
+                                ))}
+                              </Stack>
+                            </Stack>
+                          </Paper>
+                        ) : (
+                          <Paper withBorder p="sm" radius="md" className="summary-panel">
                             <Group gap="xs">
                               <IconWand size={18} />
-                              <Text size="sm" fw={700}>
-                                剧本打磨建议
+                              <Text size="sm" c="dimmed">
+                                生成打磨建议后将在这里显示修改方向。
                               </Text>
                             </Group>
-                            <Badge color={polishSource === "ai" ? "teal" : "yellow"} variant="light">
-                              {polishSource === "ai" ? "AI 建议" : "规则兜底建议"}
-                            </Badge>
-                          </Group>
-
-                          <Stack gap={6}>
-                            {polishSuggestions.map((item) => (
-                              <Paper key={`${item.category}-${item.suggestion}`} p="xs" radius="md" bg="white">
-                                <Stack gap={2}>
-                                  <Text size="sm" fw={700}>
-                                    {item.category}
-                                  </Text>
-                                  <Text size="sm" c="dimmed">
-                                    {item.suggestion}
-                                  </Text>
-                                </Stack>
-                              </Paper>
-                            ))}
-                          </Stack>
-                        </Stack>
-                      </Paper>
-                    )}
-
-                    <Paper withBorder p="sm" radius="md" className="code-preview-panel">
-                      <Stack gap="xs">
-                        <Group justify="space-between">
-                          <Group gap="xs">
-                            <IconFileCode size={18} />
-                            <Text size="sm" fw={700}>
-                              YAML 结构预览
-                            </Text>
-                          </Group>
-                          <Group gap={6}>
-                            <Badge color="blue" variant="light">
-                              标题/摘要
-                            </Badge>
-                            <Badge color="orange" variant="light">
-                              角色/对白
-                            </Badge>
-                            <Badge color="green" variant="light">
-                              场景/动作
-                            </Badge>
-                          </Group>
-                        </Group>
-
-                        <div className="yaml-code-viewer">
-                          {highlightedYamlLines.map((line) => (
-                            <div key={line.lineNumber} className="yaml-code-line">
-                              <span className="yaml-line-number">{line.lineNumber}</span>
-                              <code className="yaml-line-content">
-                                {line.key ? (
-                                  <>
-                                    <span>{line.beforeKey}</span>
-                                    <span className={line.keyClassName}>{line.key}</span>
-                                    <span>{line.afterKey}</span>
-                                  </>
-                                ) : (
-                                  line.raw || " "
-                                )}
-                              </code>
-                            </div>
-                          ))}
-                        </div>
-                      </Stack>
-                    </Paper>
-
-                    <Textarea
-                      value={yamlDraft}
-                      onChange={(event) => {
-                        const nextYaml = event.currentTarget.value;
-                        setYamlDraft(nextYaml);
-                        setYamlStatus(analyzeYamlText(nextYaml));
-                        setPolishSuggestions([]);
-                        setPolishSource("");
-                      }}
-                      minRows={22}
-                      styles={{
-                        input: {
-                          fontFamily: "Consolas, monospace",
-                          height: 620,
-                          overflowY: "auto",
-                          resize: "vertical",
-                        },
-                      }}
-                    />
+                          </Paper>
+                        )}
+                      </Tabs.Panel>
+                    </Tabs>
 
                     <Alert
                       icon={
