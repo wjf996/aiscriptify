@@ -17,18 +17,11 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
-  IconBook2,
   IconCircleCheck,
-  IconCopy,
   IconDownload,
   IconFileText,
-  IconFileCode,
-  IconPencil,
   IconPlayerPlay,
-  IconReload,
-  IconSettingsCheck,
   IconSparkles,
-  IconUsers,
 } from "@tabler/icons-react";
 import { useState } from "react";
 
@@ -262,8 +255,6 @@ function App() {
     selectedChapter === "all"
       ? null
       : chapterSummaries.find((chapter) => chapter.value === selectedChapter) ?? null;
-  const feedbackMessage = yamlStatus.valid ? statusMessage : yamlStatus.message;
-  const feedbackColor = errorMessage ? "red" : yamlStatus.valid ? "teal" : "yellow";
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -271,15 +262,8 @@ function App() {
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between">
             <Group gap="sm">
-              <Paper className="brand-mark" radius="md">
-                <IconSparkles size={20} />
-              </Paper>
-              <Stack gap={0}>
-                <Title order={3}>aiscriptify</Title>
-                <Text size="xs" c="dimmed">
-                  AI 小说转剧本创作工作台
-                </Text>
-              </Stack>
+              <IconSparkles size={24} />
+              <Title order={3}>aiscriptify</Title>
             </Group>
             <Badge variant="light" color="teal">
               小说转剧本 YAML
@@ -290,65 +274,31 @@ function App() {
 
       <AppShell.Main>
         <Container size="xl">
-          <Stack gap="xl">
-            <Paper className="hero-panel" p="xl" radius="md">
-              <Stack gap="md">
-                <Group gap="xs">
-                  <Badge color="teal" variant="light">
-                    XEngineer 作品
-                  </Badge>
-                  <Badge color="blue" variant="light">
-                    YAML Schema Ready
-                  </Badge>
-                </Group>
-                <Title order={1}>AI 小说转剧本工具</Title>
-                <Text c="dimmed" maw={760}>
-                  输入 3 个章节以上的小说文本，生成可编辑、可校验、可继续打磨的 YAML 剧本初稿。
-                </Text>
-                <Group gap="sm">
-                  <Badge className="feature-badge" leftSection={<IconUsers size={14} />}>
-                    角色智能提取
-                  </Badge>
-                  <Badge className="feature-badge" leftSection={<IconBook2 size={14} />}>
-                    场景自动分镜
-                  </Badge>
-                  <Badge className="feature-badge" leftSection={<IconFileCode size={14} />}>
-                    结构化 YAML
-                  </Badge>
-                </Group>
-              </Stack>
-            </Paper>
+          <Stack gap="lg">
+            <Stack gap={4}>
+              <Title order={2}>AI 小说转剧本工具</Title>
+              <Text c="dimmed">
+                输入 3 个章节以上的小说文本，生成可编辑、可继续打磨的 YAML 剧本初稿。
+              </Text>
+            </Stack>
 
-            <Stack gap="lg">
-              <Stack gap={4}>
-                <Title order={2}>创作工作台</Title>
-                <Text c="dimmed">
-                  左侧整理小说原文，右侧查看结构化剧本、章节摘要和 YAML 编辑区。
-                </Text>
-              </Stack>
+            <Alert icon={<IconFileText size={18} />} color="blue" variant="light">
+              当前 PR 生成可编辑 YAML 剧本初稿，并支持复制和下载当前编辑内容。
+            </Alert>
 
-              <Alert icon={<IconFileText size={18} />} color="blue" variant="light" radius="md">
-                生成后可以查看章节、角色和场景摘要，并继续编辑完整 YAML 初稿。
+            {errorMessage && (
+              <Alert icon={<IconAlertCircle size={18} />} color="red" variant="light">
+                {errorMessage}
               </Alert>
+            )}
 
-              {errorMessage && (
-                <Alert icon={<IconAlertCircle size={18} />} color="red" variant="light" radius="md">
-                  {errorMessage}
-                </Alert>
-              )}
-
-              <Grid gutter="lg">
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <Paper withBorder p="lg" radius="md" className="workspace-card">
-                    <Stack>
+            <Grid gutter="lg">
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Paper withBorder p="md" radius="md">
+                  <Stack>
                     <Group justify="space-between">
-                      <Group gap="xs">
-                        <IconBook2 size={20} />
-                        <Title order={4}>小说输入</Title>
-                      </Group>
-                      <Badge variant="outline" color="blue">
-                        至少 3 章
-                      </Badge>
+                      <Title order={4}>小说输入</Title>
+                      <Badge variant="outline">至少 3 章</Badge>
                     </Group>
 
                     <TextInput
@@ -381,11 +331,7 @@ function App() {
                     />
 
                     <Group justify="flex-end">
-                      <Button
-                        variant="light"
-                        leftSection={<IconReload size={16} />}
-                        onClick={() => setNovelText(sampleNovel)}
-                      >
+                      <Button variant="light" onClick={() => setNovelText(sampleNovel)}>
                         填充示例
                       </Button>
                       <Button
@@ -396,18 +342,15 @@ function App() {
                         生成剧本 YAML
                       </Button>
                     </Group>
-                    </Stack>
-                  </Paper>
-                </Grid.Col>
+                  </Stack>
+                </Paper>
+              </Grid.Col>
 
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <Paper withBorder p="lg" radius="md" className="workspace-card">
-                    <Stack>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Paper withBorder p="md" radius="md">
+                  <Stack>
                     <Group justify="space-between">
-                      <Group gap="xs">
-                        <IconPencil size={20} />
-                        <Title order={4}>剧本 YAML 初稿</Title>
-                      </Group>
+                      <Title order={4}>剧本 YAML 初稿</Title>
                       <Group gap="xs">
                         <Badge color="gray" variant="light">
                           章节 {chapterCount}
@@ -421,7 +364,7 @@ function App() {
                       </Group>
                     </Group>
 
-                    <Paper withBorder p="sm" radius="md" className="summary-panel">
+                    <Paper withBorder p="sm" radius="md" bg="gray.0">
                       {characterNames.length === 0 && sceneSummaries.length === 0 ? (
                         <Text size="sm" c="dimmed">
                           生成后将显示识别出的角色和场景
@@ -458,7 +401,7 @@ function App() {
                     </Paper>
 
                     {chapterSummaries.length > 0 && (
-                      <Paper withBorder p="sm" radius="md" className="summary-panel">
+                      <Paper withBorder p="sm" radius="md">
                         <Stack gap="xs">
                           <SegmentedControl
                             fullWidth
@@ -548,29 +491,27 @@ function App() {
 
                     <Alert
                       icon={
-                        yamlStatus.valid && !errorMessage ? (
+                        yamlStatus.valid ? (
                           <IconCircleCheck size={18} />
                         ) : (
                           <IconAlertCircle size={18} />
                         )
                       }
-                      color={feedbackColor}
+                      color={yamlStatus.valid ? "teal" : "yellow"}
                       variant="light"
-                      radius="md"
                     >
-                      {feedbackMessage}
+                      {yamlStatus.message}
+                    </Alert>
+
+                    <Alert color={errorMessage ? "red" : "teal"} variant="light">
+                      {statusMessage}
                     </Alert>
 
                     <Group justify="flex-end">
-                      <Button
-                        variant="light"
-                        leftSection={<IconSettingsCheck size={16} />}
-                        loading={isCheckingYaml}
-                        onClick={handleCheckYaml}
-                      >
+                      <Button variant="light" loading={isCheckingYaml} onClick={handleCheckYaml}>
                         校验 YAML
                       </Button>
-                      <Button variant="light" leftSection={<IconCopy size={16} />} onClick={handleCopyYaml}>
+                      <Button variant="light" onClick={handleCopyYaml}>
                         复制 YAML
                       </Button>
                       <Button
@@ -581,30 +522,10 @@ function App() {
                         下载 YAML
                       </Button>
                     </Group>
-                    </Stack>
-                  </Paper>
-                </Grid.Col>
-              </Grid>
-
-              <Paper className="footer-panel" p="md" radius="md">
-                <Group justify="space-between" gap="md">
-                  <Text size="sm" c="dimmed">
-                    2026 XEngineer 暑期实训营作品 · React / Mantine / FastAPI / DeepSeek
-                  </Text>
-                  <Group gap="xs">
-                    <Badge color="gray" variant="light">
-                      多章节输入
-                    </Badge>
-                    <Badge color="gray" variant="light">
-                      YAML 初稿
-                    </Badge>
-                    <Badge color="gray" variant="light">
-                      作者可编辑
-                    </Badge>
-                  </Group>
-                </Group>
-              </Paper>
-            </Stack>
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            </Grid>
           </Stack>
         </Container>
       </AppShell.Main>
