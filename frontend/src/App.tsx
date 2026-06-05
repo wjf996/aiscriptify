@@ -17,7 +17,7 @@ import {
 import { IconAlertCircle, IconFileText, IconPlayerPlay, IconSparkles } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { ScriptStyle, validateChapters } from "./api";
+import { ScriptStyle, convertNovel, validateChapters } from "./api";
 
 const sampleYaml = `title: 待生成剧本
 script_type: screenplay
@@ -41,23 +41,30 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("等待输入小说文本");
   const [errorMessage, setErrorMessage] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [scriptDraft, setScriptDraft] = useState(sampleYaml);
 
   const handleValidate = async () => {
     setErrorMessage("");
-    setStatusMessage("正在校验章节...");
+    setStatusMessage("正在校验章节并调用 AI...");
     setIsValidating(true);
 
     try {
-      const result = await validateChapters({ title, text: novelText, style });
-      setChapterCount(result.chapter_count);
-      setStatusMessage(result.message);
+      const validation = await validateChapters({ title, text: novelText, style });
+      setChapterCount(validation.chapter_count);
 
-      if (!result.valid) {
-        setErrorMessage(result.message);
+      if (!validation.valid) {
+        setStatusMessage(validation.message);
+        setErrorMessage(validation.message);
+        return;
       }
+
+      const result = await convertNovel({ title, text: novelText, style });
+      setChapterCount(result.chapter_count);
+      setScriptDraft(JSON.stringify(result.script, null, 2));
+      setStatusMessage("AI 剧本结构生成完成，YAML 生成会在后续 PR 接入");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "章节校验失败");
-      setStatusMessage("校验失败");
+      setErrorMessage(error instanceof Error ? error.message : "AI 转换失败");
+      setStatusMessage("转换失败");
     } finally {
       setIsValidating(false);
     }
@@ -90,7 +97,7 @@ function App() {
             </Stack>
 
             <Alert icon={<IconFileText size={18} />} color="blue" variant="light">
-              当前 PR 接入章节数量校验，AI 转换和 YAML 生成会在后续 PR 接入。
+              当前 PR 接入 DeepSeek AI 转换，结果先以结构化 JSON 展示，YAML 生成会在后续 PR 接入。
             </Alert>
 
             {errorMessage && (
@@ -172,7 +179,7 @@ function App() {
                     </Group>
 
                     <Textarea
-                      value={sampleYaml}
+                      value={scriptDraft}
                       readOnly
                       autosize
                       minRows={18}
