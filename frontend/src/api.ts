@@ -31,6 +31,17 @@ export type YamlValidationResponse = {
   message: string;
 };
 
+export type PolishSuggestion = {
+  category: string;
+  suggestion: string;
+};
+
+export type PolishSuggestionResponse = {
+  suggestions: PolishSuggestion[];
+  source: "ai" | "fallback";
+  warnings: string[];
+};
+
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 export async function validateChapters(payload: {
@@ -88,4 +99,23 @@ export async function validateYaml(payload: { yaml: string }): Promise<YamlValid
   }
 
   return response.json() as Promise<YamlValidationResponse>;
+}
+
+export async function generatePolishSuggestions(payload: {
+  yaml: string;
+}): Promise<PolishSuggestionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/polish/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(error?.detail ?? "打磨建议生成失败，请检查后端服务");
+  }
+
+  return response.json() as Promise<PolishSuggestionResponse>;
 }
