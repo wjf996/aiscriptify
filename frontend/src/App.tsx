@@ -14,14 +14,55 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { IconFileText, IconPlayerPlay, IconSparkles } from "@tabler/icons-react";
+import { IconAlertCircle, IconFileText, IconPlayerPlay, IconSparkles } from "@tabler/icons-react";
+import { useState } from "react";
+
+import { ScriptStyle, validateChapters } from "./api";
 
 const sampleYaml = `title: 待生成剧本
 script_type: screenplay
 characters: []
 chapters: []`;
 
+const sampleNovel = `第一章 雨夜来信
+雨夜里，林夏收到一封没有署名的信。信中提到三年前失踪的好友，也提到城北旧剧院即将重开。
+
+第二章 旧剧院
+林夏来到旧剧院，遇见正在排练的导演周远。周远否认认识失踪者，却在后台藏起一张旧合照。
+
+第三章 灯光熄灭
+排练开始后，剧院突然停电。黑暗中有人念出失踪者留下的台词，林夏意识到真相被写进了这出戏里。`;
+
 function App() {
+  const [title, setTitle] = useState("");
+  const [style, setStyle] = useState<ScriptStyle>("screenplay");
+  const [novelText, setNovelText] = useState("");
+  const [chapterCount, setChapterCount] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("等待输入小说文本");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleValidate = async () => {
+    setErrorMessage("");
+    setStatusMessage("正在校验章节...");
+    setIsValidating(true);
+
+    try {
+      const result = await validateChapters({ title, text: novelText, style });
+      setChapterCount(result.chapter_count);
+      setStatusMessage(result.message);
+
+      if (!result.valid) {
+        setErrorMessage(result.message);
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "章节校验失败");
+      setStatusMessage("校验失败");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   return (
     <AppShell header={{ height: 64 }} padding="md">
       <AppShell.Header>
@@ -49,8 +90,14 @@ function App() {
             </Stack>
 
             <Alert icon={<IconFileText size={18} />} color="blue" variant="light">
-              当前 PR 仅搭建前端基础页面，生成逻辑会在后续 PR 接入。
+              当前 PR 接入章节数量校验，AI 转换和 YAML 生成会在后续 PR 接入。
             </Alert>
+
+            {errorMessage && (
+              <Alert icon={<IconAlertCircle size={18} />} color="red" variant="light">
+                {errorMessage}
+              </Alert>
+            )}
 
             <Grid gutter="lg">
               <Grid.Col span={{ base: 12, md: 6 }}>
@@ -61,12 +108,19 @@ function App() {
                       <Badge variant="outline">至少 3 章</Badge>
                     </Group>
 
-                    <TextInput label="作品标题" placeholder="请输入小说标题" />
+                    <TextInput
+                      label="作品标题"
+                      placeholder="请输入小说标题"
+                      value={title}
+                      onChange={(event) => setTitle(event.currentTarget.value)}
+                    />
 
                     <Select
                       label="剧本类型"
                       placeholder="请选择剧本类型"
                       defaultValue="screenplay"
+                      value={style}
+                      onChange={(value) => setStyle((value as ScriptStyle | null) ?? "screenplay")}
                       data={[
                         { value: "screenplay", label: "影视剧" },
                         { value: "short_drama", label: "短剧" },
@@ -77,13 +131,23 @@ function App() {
                     <Textarea
                       label="小说文本"
                       placeholder="请粘贴至少 3 个章节的小说文本..."
+                      value={novelText}
+                      onChange={(event) => setNovelText(event.currentTarget.value)}
                       autosize
                       minRows={14}
                     />
 
                     <Group justify="flex-end">
-                      <Button variant="light">填充示例</Button>
-                      <Button leftSection={<IconPlayerPlay size={18} />}>生成剧本 YAML</Button>
+                      <Button variant="light" onClick={() => setNovelText(sampleNovel)}>
+                        填充示例
+                      </Button>
+                      <Button
+                        leftSection={<IconPlayerPlay size={18} />}
+                        loading={isValidating}
+                        onClick={handleValidate}
+                      >
+                        生成剧本 YAML
+                      </Button>
                     </Group>
                   </Stack>
                 </Paper>
@@ -96,7 +160,7 @@ function App() {
                       <Title order={4}>剧本 YAML 初稿</Title>
                       <Group gap="xs">
                         <Badge color="gray" variant="light">
-                          章节 0
+                          章节 {chapterCount}
                         </Badge>
                         <Badge color="gray" variant="light">
                           角色 0
@@ -114,6 +178,10 @@ function App() {
                       minRows={18}
                       styles={{ input: { fontFamily: "Consolas, monospace" } }}
                     />
+
+                    <Alert color={errorMessage ? "red" : "teal"} variant="light">
+                      {statusMessage}
+                    </Alert>
 
                     <Group justify="flex-end">
                       <Button variant="light">复制 YAML</Button>
