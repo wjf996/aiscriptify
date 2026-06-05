@@ -18,7 +18,7 @@ def convert_novel_to_script(title: str, text: str, style: str) -> dict:
             "role": "system",
             "content": (
                 "Return compact valid JSON only. Do not use Markdown. "
-                "Keep the answer short."
+                "Keep the answer short. Use Simplified Chinese for all user-facing values."
             ),
         },
         {
@@ -95,6 +95,11 @@ Return one JSON object with these keys: title, script_type, characters, chapters
 Each chapter must have: chapter_title, summary, scenes.
 Each scene must have: scene_id, location, time, characters, action, dialogues.
 Use at most one scene and one dialogue per chapter.
+Important language rules:
+- Keep JSON/YAML keys in English exactly as requested.
+- All values that authors read must be Simplified Chinese.
+- Do not translate Chinese character names into English or pinyin.
+- location, time, action, summary, dialogue lines, and character names must be Chinese.
 
 Title: {title or "Untitled"}
 Script type: {style}

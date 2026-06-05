@@ -46,3 +46,18 @@ class YamlValidationRequest(BaseModel):
 class YamlValidationResponse(BaseModel):
     valid: bool
     message: str
+
+
+class PolishSuggestionRequest(BaseModel):
+    yaml: str = Field(min_length=1)
+
+
+class PolishSuggestionItem(BaseModel):
+    category: str
+    suggestion: str
+
+
+class PolishSuggestionResponse(BaseModel):
+    suggestions: list[PolishSuggestionItem]
+    source: str
+    warnings: list[str] = Field(default_factory=list)

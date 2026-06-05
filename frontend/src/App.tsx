@@ -28,11 +28,19 @@ import {
   IconReload,
   IconSettingsCheck,
   IconSparkles,
+  IconWand,
   IconUsers,
 } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { ScriptStyle, convertNovel, validateChapters, validateYaml } from "./api";
+import {
+  PolishSuggestion,
+  ScriptStyle,
+  convertNovel,
+  generatePolishSuggestions,
+  validateChapters,
+  validateYaml,
+} from "./api";
 
 const sampleYaml = `title: 待生成剧本
 script_type: screenplay
@@ -172,6 +180,9 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [isCheckingYaml, setIsCheckingYaml] = useState(false);
+  const [isGeneratingPolish, setIsGeneratingPolish] = useState(false);
+  const [polishSuggestions, setPolishSuggestions] = useState<PolishSuggestion[]>([]);
+  const [polishSource, setPolishSource] = useState<"ai" | "fallback" | "">("");
   const [yamlDraft, setYamlDraft] = useState(sampleYaml);
   const [yamlStatus, setYamlStatus] = useState<YamlStatus>(analyzeYamlText(sampleYaml));
 
@@ -204,6 +215,8 @@ function App() {
       setSceneSummaries(result.scene_summaries);
       setChapterSummaries(buildChapterSummaries(result.script));
       setSelectedChapter("all");
+      setPolishSuggestions([]);
+      setPolishSource("");
       setYamlDraft(result.yaml);
       setYamlStatus({
         valid: result.yaml_valid,
@@ -242,6 +255,30 @@ function App() {
       setStatusMessage("YAML 校验失败");
     } finally {
       setIsCheckingYaml(false);
+    }
+  };
+
+  const handleGeneratePolishSuggestions = async () => {
+    if (!yamlDraft.trim() || yamlDraft === sampleYaml) {
+      setStatusMessage("请先生成或填写剧本 YAML，再生成打磨建议");
+      return;
+    }
+
+    setIsGeneratingPolish(true);
+    setErrorMessage("");
+
+    try {
+      const result = await generatePolishSuggestions({ yaml: yamlDraft });
+      setPolishSuggestions(result.suggestions);
+      setPolishSource(result.source);
+      setStatusMessage(
+        result.source === "ai" ? "AI 打磨建议已生成" : result.warnings[0] || "已生成规则兜底建议",
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "打磨建议生成失败");
+      setStatusMessage("打磨建议生成失败");
+    } finally {
+      setIsGeneratingPolish(false);
     }
   };
 
@@ -528,12 +565,47 @@ function App() {
                       </Paper>
                     )}
 
+                    {polishSuggestions.length > 0 && (
+                      <Paper withBorder p="sm" radius="md" className="summary-panel">
+                        <Stack gap="xs">
+                          <Group justify="space-between">
+                            <Group gap="xs">
+                              <IconWand size={18} />
+                              <Text size="sm" fw={700}>
+                                剧本打磨建议
+                              </Text>
+                            </Group>
+                            <Badge color={polishSource === "ai" ? "teal" : "yellow"} variant="light">
+                              {polishSource === "ai" ? "AI 建议" : "规则兜底建议"}
+                            </Badge>
+                          </Group>
+
+                          <Stack gap={6}>
+                            {polishSuggestions.map((item) => (
+                              <Paper key={`${item.category}-${item.suggestion}`} p="xs" radius="md" bg="white">
+                                <Stack gap={2}>
+                                  <Text size="sm" fw={700}>
+                                    {item.category}
+                                  </Text>
+                                  <Text size="sm" c="dimmed">
+                                    {item.suggestion}
+                                  </Text>
+                                </Stack>
+                              </Paper>
+                            ))}
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    )}
+
                     <Textarea
                       value={yamlDraft}
                       onChange={(event) => {
                         const nextYaml = event.currentTarget.value;
                         setYamlDraft(nextYaml);
                         setYamlStatus(analyzeYamlText(nextYaml));
+                        setPolishSuggestions([]);
+                        setPolishSource("");
                       }}
                       minRows={22}
                       styles={{
@@ -562,6 +634,14 @@ function App() {
                     </Alert>
 
                     <Group justify="flex-end">
+                      <Button
+                        variant="light"
+                        leftSection={<IconWand size={16} />}
+                        loading={isGeneratingPolish}
+                        onClick={handleGeneratePolishSuggestions}
+                      >
+                        打磨建议
+                      </Button>
                       <Button
                         variant="light"
                         leftSection={<IconSettingsCheck size={16} />}

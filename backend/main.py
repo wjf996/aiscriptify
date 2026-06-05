@@ -10,11 +10,14 @@ from app.fallback_script import build_fallback_script
 from app.models import (
     ChapterValidationRequest,
     ChapterValidationResponse,
+    PolishSuggestionRequest,
+    PolishSuggestionResponse,
     ScriptConversionRequest,
     ScriptConversionResponse,
     YamlValidationRequest,
     YamlValidationResponse,
 )
+from app.polish_suggestions import generate_polish_suggestions
 from app.script_quality import (
     count_script_characters,
     count_script_scenes,
@@ -105,4 +108,14 @@ def validate_yaml(request: YamlValidationRequest) -> YamlValidationResponse:
     return YamlValidationResponse(
         valid=yaml_valid,
         message="YAML 校验通过" if yaml_valid else yaml_error,
+    )
+
+
+@app.post("/api/polish/suggestions")
+def polish_suggestions(request: PolishSuggestionRequest) -> PolishSuggestionResponse:
+    suggestions, source, warnings = generate_polish_suggestions(request.yaml)
+    return PolishSuggestionResponse(
+        suggestions=suggestions,
+        source=source,
+        warnings=warnings,
     )
