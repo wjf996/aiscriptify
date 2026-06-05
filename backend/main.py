@@ -12,6 +12,15 @@ from app.models import (
     ChapterValidationResponse,
     ScriptConversionRequest,
     ScriptConversionResponse,
+    YamlValidationRequest,
+    YamlValidationResponse,
+)
+from app.script_quality import (
+    count_script_characters,
+    count_script_scenes,
+    extract_character_names,
+    extract_scene_summaries,
+    validate_yaml_text,
 )
 from app.yaml_builder import build_script_yaml
 
@@ -56,8 +65,14 @@ def convert_script(request: ScriptConversionRequest) -> ScriptConversionResponse
     if chapter_count < 3:
         return ScriptConversionResponse(
             chapter_count=chapter_count,
+            character_count=0,
+            scene_count=0,
+            character_names=[],
+            scene_summaries=[],
             script={},
             yaml="",
+            yaml_valid=False,
+            yaml_error="小说文本章节数不足，暂未生成 YAML",
             warnings=["请至少输入 3 个章节的小说文本"],
         )
 
@@ -69,9 +84,25 @@ def convert_script(request: ScriptConversionRequest) -> ScriptConversionResponse
         warnings.append(f"AI 调用失败，已生成规则兜底剧本草稿：{exc.detail}")
 
     script_yaml = build_script_yaml(script)
+    yaml_valid, yaml_error = validate_yaml_text(script_yaml)
     return ScriptConversionResponse(
         chapter_count=chapter_count,
+        character_count=count_script_characters(script),
+        scene_count=count_script_scenes(script),
+        character_names=extract_character_names(script),
+        scene_summaries=extract_scene_summaries(script),
         script=script,
         yaml=script_yaml,
+        yaml_valid=yaml_valid,
+        yaml_error=yaml_error,
         warnings=warnings,
+    )
+
+
+@app.post("/api/yaml/validate")
+def validate_yaml(request: YamlValidationRequest) -> YamlValidationResponse:
+    yaml_valid, yaml_error = validate_yaml_text(request.yaml)
+    return YamlValidationResponse(
+        valid=yaml_valid,
+        message="YAML 校验通过" if yaml_valid else yaml_error,
     )

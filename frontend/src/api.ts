@@ -15,9 +15,20 @@ export type ChapterValidationResponse = {
 
 export type ScriptConversionResponse = {
   chapter_count: number;
+  character_count: number;
+  scene_count: number;
+  character_names: string[];
+  scene_summaries: string[];
   script: Record<string, unknown>;
   yaml: string;
+  yaml_valid: boolean;
+  yaml_error: string;
   warnings: string[];
+};
+
+export type YamlValidationResponse = {
+  valid: boolean;
+  message: string;
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000";
@@ -61,4 +72,20 @@ export async function convertNovel(payload: {
   }
 
   return response.json() as Promise<ScriptConversionResponse>;
+}
+
+export async function validateYaml(payload: { yaml: string }): Promise<YamlValidationResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/yaml/validate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("YAML 校验失败，请检查后端服务是否正常运行");
+  }
+
+  return response.json() as Promise<YamlValidationResponse>;
 }
