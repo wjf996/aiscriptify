@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai_client import convert_novel_to_script
 from app.chapter_parser import parse_chapters
 from app.config import settings
-from app.models import ChapterValidationRequest, ChapterValidationResponse
+from app.models import (
+    ChapterValidationRequest,
+    ChapterValidationResponse,
+    ScriptConversionRequest,
+    ScriptConversionResponse,
+)
 
 app = FastAPI(
     title=settings.app_name,
@@ -37,3 +43,18 @@ def validate_chapters(request: ChapterValidationRequest) -> ChapterValidationRes
         chapters=chapters,
         message=message,
     )
+
+
+@app.post("/api/convert")
+def convert_script(request: ScriptConversionRequest) -> ScriptConversionResponse:
+    chapters = parse_chapters(request.text)
+    chapter_count = len(chapters)
+    if chapter_count < 3:
+        return ScriptConversionResponse(
+            chapter_count=chapter_count,
+            script={},
+            warnings=["请至少输入 3 个章节的小说文本"],
+        )
+
+    script = convert_novel_to_script(title=request.title, text=request.text, style=request.style)
+    return ScriptConversionResponse(chapter_count=chapter_count, script=script)

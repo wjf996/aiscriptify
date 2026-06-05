@@ -13,6 +13,12 @@ export type ChapterValidationResponse = {
   message: string;
 };
 
+export type ScriptConversionResponse = {
+  chapter_count: number;
+  script: Record<string, unknown>;
+  warnings: string[];
+};
+
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 export async function validateChapters(payload: {
@@ -33,4 +39,25 @@ export async function validateChapters(payload: {
   }
 
   return response.json() as Promise<ChapterValidationResponse>;
+}
+
+export async function convertNovel(payload: {
+  title: string;
+  text: string;
+  style: ScriptStyle;
+}): Promise<ScriptConversionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/convert`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(error?.detail ?? "AI 转换失败，请检查后端服务和 DeepSeek 配置");
+  }
+
+  return response.json() as Promise<ScriptConversionResponse>;
 }

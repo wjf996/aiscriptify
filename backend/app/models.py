@@ -18,3 +18,15 @@ class ChapterValidationResponse(BaseModel):
     valid: bool
     chapters: list[ChapterInfo]
     message: str
+
+
+class ScriptConversionRequest(BaseModel):
+    title: str = Field(default="", max_length=120)
+    text: str = Field(min_length=1)
+    style: str = Field(default="screenplay")
+
+
+class ScriptConversionResponse(BaseModel):
+    chapter_count: int
+    script: dict
+    warnings: list[str] = Field(default_factory=list)

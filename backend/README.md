@@ -21,3 +21,15 @@ uvicorn main:app --reload
 ```text
 http://127.0.0.1:8000/api/health
 ```
+
+## DeepSeek 配置
+
+后端通过 OpenAI 兼容接口调用 DeepSeek。请在 `backend/.env` 中配置：
+
+```env
+LLM_API_KEY=你的 DeepSeek API Key
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
+```
+
+其中 `LLM_MODEL` 可按需要切换为其他 DeepSeek 模型。
