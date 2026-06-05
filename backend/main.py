@@ -1,15 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import HTTPException
+
 from app.ai_client import convert_novel_to_script
 from app.chapter_parser import parse_chapters
 from app.config import settings
+from app.fallback_script import build_fallback_script
 from app.models import (
     ChapterValidationRequest,
     ChapterValidationResponse,
     ScriptConversionRequest,
     ScriptConversionResponse,
 )
+from app.yaml_builder import build_script_yaml
 
 app = FastAPI(
     title=settings.app_name,
@@ -53,8 +57,21 @@ def convert_script(request: ScriptConversionRequest) -> ScriptConversionResponse
         return ScriptConversionResponse(
             chapter_count=chapter_count,
             script={},
+            yaml="",
             warnings=["请至少输入 3 个章节的小说文本"],
         )
 
-    script = convert_novel_to_script(title=request.title, text=request.text, style=request.style)
-    return ScriptConversionResponse(chapter_count=chapter_count, script=script)
+    warnings: list[str] = []
+    try:
+        script = convert_novel_to_script(title=request.title, text=request.text, style=request.style)
+    except HTTPException as exc:
+        script = build_fallback_script(title=request.title, text=request.text, style=request.style)
+        warnings.append(f"AI 调用失败，已生成规则兜底剧本草稿：{exc.detail}")
+
+    script_yaml = build_script_yaml(script)
+    return ScriptConversionResponse(
+        chapter_count=chapter_count,
+        script=script,
+        yaml=script_yaml,
+        warnings=warnings,
+    )

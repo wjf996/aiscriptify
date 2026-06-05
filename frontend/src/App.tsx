@@ -14,7 +14,13 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { IconAlertCircle, IconFileText, IconPlayerPlay, IconSparkles } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconDownload,
+  IconFileText,
+  IconPlayerPlay,
+  IconSparkles,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
 import { ScriptStyle, convertNovel, validateChapters } from "./api";
@@ -24,14 +30,14 @@ script_type: screenplay
 characters: []
 chapters: []`;
 
-const sampleNovel = `第一章 雨夜来信
-雨夜里，林夏收到一封没有署名的信。信中提到三年前失踪的好友，也提到城北旧剧院即将重开。
+const sampleNovel = `第一章 办公室
+张三在办公室整理文件，李四突然进来寻找报告，经理王五随后出现调解。
 
-第二章 旧剧院
-林夏来到旧剧院，遇见正在排练的导演周远。周远否认认识失踪者，却在后台藏起一张旧合照。
+第二章 公园
+张三在公园散心，遇到李四。两人谈起白天的误会，并决定和解。
 
-第三章 灯光熄灭
-排练开始后，剧院突然停电。黑暗中有人念出失踪者留下的台词，林夏意识到真相被写进了这出戏里。`;
+第三章 会议室
+王五在会议上表扬张三和李四，团队重新恢复合作。`;
 
 function App() {
   const [title, setTitle] = useState("");
@@ -41,7 +47,7 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("等待输入小说文本");
   const [errorMessage, setErrorMessage] = useState("");
   const [isValidating, setIsValidating] = useState(false);
-  const [scriptDraft, setScriptDraft] = useState(sampleYaml);
+  const [yamlDraft, setYamlDraft] = useState(sampleYaml);
 
   const handleValidate = async () => {
     setErrorMessage("");
@@ -60,14 +66,36 @@ function App() {
 
       const result = await convertNovel({ title, text: novelText, style });
       setChapterCount(result.chapter_count);
-      setScriptDraft(JSON.stringify(result.script, null, 2));
-      setStatusMessage("AI 剧本结构生成完成，YAML 生成会在后续 PR 接入");
+      setYamlDraft(result.yaml);
+      setStatusMessage(
+        result.warnings.length > 0
+          ? result.warnings[0]
+          : "YAML 剧本初稿生成完成，可继续编辑和打磨",
+      );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "AI 转换失败");
       setStatusMessage("转换失败");
     } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleCopyYaml = async () => {
+    await navigator.clipboard.writeText(yamlDraft);
+    setStatusMessage("已复制当前 YAML 内容");
+  };
+
+  const handleDownloadYaml = () => {
+    const blob = new Blob([yamlDraft], { type: "text/yaml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeTitle = title.trim() || "aiscriptify-script";
+
+    link.href = url;
+    link.download = `${safeTitle}.yaml`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatusMessage("已下载当前 YAML 内容");
   };
 
   return (
@@ -97,7 +125,7 @@ function App() {
             </Stack>
 
             <Alert icon={<IconFileText size={18} />} color="blue" variant="light">
-              当前 PR 接入 DeepSeek AI 转换，结果先以结构化 JSON 展示，YAML 生成会在后续 PR 接入。
+              当前 PR 生成可编辑 YAML 剧本初稿，并支持复制和下载当前编辑内容。
             </Alert>
 
             {errorMessage && (
@@ -179,8 +207,8 @@ function App() {
                     </Group>
 
                     <Textarea
-                      value={scriptDraft}
-                      readOnly
+                      value={yamlDraft}
+                      onChange={(event) => setYamlDraft(event.currentTarget.value)}
                       autosize
                       minRows={18}
                       styles={{ input: { fontFamily: "Consolas, monospace" } }}
@@ -191,8 +219,16 @@ function App() {
                     </Alert>
 
                     <Group justify="flex-end">
-                      <Button variant="light">复制 YAML</Button>
-                      <Button variant="filled">下载 YAML</Button>
+                      <Button variant="light" onClick={handleCopyYaml}>
+                        复制 YAML
+                      </Button>
+                      <Button
+                        variant="filled"
+                        leftSection={<IconDownload size={18} />}
+                        onClick={handleDownloadYaml}
+                      >
+                        下载 YAML
+                      </Button>
                     </Group>
                   </Stack>
                 </Paper>

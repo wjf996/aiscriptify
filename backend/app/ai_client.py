@@ -1,8 +1,11 @@
 import json
+import re
+import time
 
 from fastapi import HTTPException
-from openai import OpenAI, OpenAIError
+import httpx
 
+from app.chapter_parser import parse_chapters
 from app.config import settings
 
 
@@ -10,68 +13,91 @@ def convert_novel_to_script(title: str, text: str, style: str) -> dict:
     if not settings.llm_api_key:
         raise HTTPException(status_code=500, detail="后端缺少 LLM_API_KEY，请先配置 DeepSeek API Key")
 
-    client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
-
     messages = [
         {
             "role": "system",
             "content": (
-                "你是一个小说改编剧本助手。请把多章节小说改编为结构化剧本初稿。"
-                "必须只返回 JSON，不要返回 Markdown，不要添加解释文字。"
+                "Return compact valid JSON only. Do not use Markdown. "
+                "Keep the answer short."
             ),
         },
         {
             "role": "user",
-            "content": build_prompt(title=title, text=text, style=style),
+            "content": build_prompt(title=title, text=compact_novel_text(text), style=style),
         },
     ]
 
-    try:
+    last_error: httpx.HTTPError | None = None
+    for attempt in range(3):
         try:
-            response = client.chat.completions.create(
-                model=settings.llm_model,
-                messages=messages,
-                temperature=0.4,
-                response_format={"type": "json_object"},
+            response = httpx.post(
+                f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.llm_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.llm_model,
+                    "messages": messages,
+                    "temperature": 0.2,
+                    "max_tokens": 2000,
+                },
+                proxy=settings.llm_proxy_url or None,
+                timeout=90,
             )
-        except OpenAIError:
-            response = client.chat.completions.create(
-                model=settings.llm_model,
-                messages=messages,
-                temperature=0.4,
-            )
-    except OpenAIError as exc:
-        raise HTTPException(status_code=502, detail=f"AI 接口调用失败：{exc}") from exc
+            break
+        except httpx.HTTPError as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(1)
+    else:
+        raise HTTPException(status_code=502, detail=f"AI 接口连接失败：{last_error}") from last_error
 
-    content = response.choices[0].message.content
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"AI 接口返回错误：{response.text[:300]}")
+
+    data = response.json()
+    content = data.get("choices", [{}])[0].get("message", {}).get("content")
     if not content:
         raise HTTPException(status_code=502, detail="AI 返回内容为空")
 
     try:
-        return json.loads(content)
+        return json.loads(extract_json_object(content))
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=502, detail="AI 返回内容不是有效 JSON") from exc
 
 
+def extract_json_object(content: str) -> str:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return cleaned
+    return cleaned[start : end + 1]
+
+
+def compact_novel_text(text: str) -> str:
+    chapters = parse_chapters(text)
+    if not chapters:
+        return text[:600]
+
+    return "\n\n".join(f"{chapter.title}\n{chapter.preview}" for chapter in chapters[:6])
+
+
 def build_prompt(title: str, text: str, style: str) -> str:
     return f"""
-作品标题：{title or "未命名小说"}
-剧本类型：{style}
+Convert this 3+ chapter novel into a short editable screenplay draft.
+Return one JSON object with these keys: title, script_type, characters, chapters.
+Each chapter must have: chapter_title, summary, scenes.
+Each scene must have: scene_id, location, time, characters, action, dialogues.
+Use at most one scene and one dialogue per chapter.
 
-请根据小说文本生成剧本初稿 JSON，结构必须包含：
-- title: 作品标题
-- script_type: 剧本类型
-- characters: 角色数组，每项包含 name 和 description
-- chapters: 章节数组，每项包含 chapter_title、summary、scenes
-- scenes: 场景数组，每项包含 scene_id、location、time、characters、action、dialogues
-- dialogues: 对白数组，每项包含 character 和 line
-
-要求：
-1. 保留原小说的章节脉络。
-2. 将叙事内容整理为场景、动作描述和对白。
-3. 输出应是可继续编辑和打磨的剧本初稿。
-4. 只返回 JSON。
-
-小说文本：
+Title: {title or "Untitled"}
+Script type: {style}
+Novel:
 {text}
 """.strip()
