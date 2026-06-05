@@ -16,6 +16,7 @@ export type ChapterValidationResponse = {
 export type ScriptConversionResponse = {
   chapter_count: number;
   script: Record<string, unknown>;
+  yaml: string;
   warnings: string[];
 };
 

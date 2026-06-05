@@ -29,4 +29,5 @@ class ScriptConversionRequest(BaseModel):
 class ScriptConversionResponse(BaseModel):
     chapter_count: int
     script: dict
+    yaml: str = ""
     warnings: list[str] = Field(default_factory=list)

@@ -29,7 +29,13 @@ http://127.0.0.1:8000/api/health
 ```env
 LLM_API_KEY=你的 DeepSeek API Key
 LLM_BASE_URL=https://api.deepseek.com
-LLM_MODEL=deepseek-v4-flash
+LLM_MODEL=deepseek-v4-pro
 ```
 
 其中 `LLM_MODEL` 可按需要切换为其他 DeepSeek 模型。
+
+如果本机需要通过 Clash 访问 DeepSeek，可以额外配置：
+
+```env
+LLM_PROXY_URL=http://127.0.0.1:7897
+```
