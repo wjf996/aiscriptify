@@ -11,6 +11,13 @@ class AiPromptTest(unittest.TestCase):
         self.assertIn("Simplified Chinese", prompt)
         self.assertIn("Do not translate Chinese character names", prompt)
 
+    def test_conversion_prompt_requires_plain_json_and_avoids_placeholders(self) -> None:
+        prompt = build_prompt("雨夜归来", "第一章\n林夏回到旧书店。", "screenplay")
+
+        self.assertIn("Return valid JSON only", prompt)
+        self.assertIn("Do not include Markdown fences", prompt)
+        self.assertIn("Avoid placeholder values", prompt)
+
     def test_conversion_prompt_differentiates_screenplay(self) -> None:
         prompt = build_prompt("雨夜归来", "第一章\n林夏回到旧书店。", "screenplay")
 
