@@ -11,6 +11,25 @@ class AiPromptTest(unittest.TestCase):
         self.assertIn("Simplified Chinese", prompt)
         self.assertIn("Do not translate Chinese character names", prompt)
 
+    def test_conversion_prompt_differentiates_screenplay(self) -> None:
+        prompt = build_prompt("雨夜归来", "第一章\n林夏回到旧书店。", "screenplay")
+
+        self.assertIn("shots", prompt)
+        self.assertIn("visual action", prompt)
+
+    def test_conversion_prompt_differentiates_short_drama(self) -> None:
+        prompt = build_prompt("雨夜归来", "第一章\n林夏回到旧书店。", "short_drama")
+
+        self.assertIn("hook", prompt)
+        self.assertIn("conflict", prompt)
+        self.assertIn("reversal", prompt)
+
+    def test_conversion_prompt_differentiates_audio_drama(self) -> None:
+        prompt = build_prompt("雨夜归来", "第一章\n林夏回到旧书店。", "audio_drama")
+
+        self.assertIn("sound_effects", prompt)
+        self.assertIn("narration", prompt)
+
     def test_polish_prompt_requires_chinese_suggestions(self) -> None:
         prompt = build_polish_prompt("title: Untitled\nchapters: []\n")
 
