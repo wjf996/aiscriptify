@@ -100,6 +100,18 @@ const initialGenerationSteps: GenerationStep[] = [
   { label: "生成摘要", status: "pending" },
 ];
 
+const scriptStyleDescriptions: Record<ScriptStyle, string> = {
+  screenplay: "影视剧：偏画面、动作和镜头，可生成神情与分镜建议。",
+  short_drama: "短剧：偏冲突、反转和节奏，可生成结尾 hook。",
+  audio_drama: "广播剧：偏旁白、音效和对白，可生成 narration 与 sound_effects。",
+};
+
+const scriptStyleCapabilities: Record<ScriptStyle, string[]> = {
+  screenplay: ["神情 emotion", "分镜 shots"],
+  short_drama: ["神情 emotion", "悬念 hook"],
+  audio_drama: ["旁白 narration", "音效 sound_effects"],
+};
+
 function analyzeYamlText(yamlText: string): YamlStatus {
   const trimmed = yamlText.trim();
   if (!trimmed) {
@@ -243,10 +255,27 @@ function getYamlKeyClassName(key: string): string {
   if (["title", "script_type", "chapter_title", "summary"].includes(key)) {
     return "yaml-key-blue";
   }
-  if (["characters", "speaker", "line"].includes(key)) {
+  if (["characters", "speaker", "line", "emotion"].includes(key)) {
     return "yaml-key-orange";
   }
-  if (["chapters", "scenes", "location", "time", "action", "dialogues"].includes(key)) {
+  if (
+    [
+      "chapters",
+      "scenes",
+      "location",
+      "time",
+      "action",
+      "dialogues",
+      "shots",
+      "shot_id",
+      "shot_type",
+      "camera",
+      "description",
+      "hook",
+      "sound_effects",
+      "narration",
+    ].includes(key)
+  ) {
     return "yaml-key-green";
   }
   return "yaml-key-default";
@@ -703,6 +732,16 @@ function App() {
                           { value: "audio_drama", label: "广播剧" },
                         ]}
                       />
+                      <Text size="sm" c="dimmed">
+                        {scriptStyleDescriptions[style]}
+                      </Text>
+                      <Group gap={6}>
+                        {scriptStyleCapabilities[style].map((capability) => (
+                          <Badge key={capability} color="teal" variant="light">
+                            {capability}
+                          </Badge>
+                        ))}
+                      </Group>
 
                       <input
                         ref={fileInputRef}

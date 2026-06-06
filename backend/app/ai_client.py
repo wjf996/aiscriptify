@@ -88,13 +88,47 @@ def compact_novel_text(text: str) -> str:
     return "\n\n".join(f"{chapter.title}\n{chapter.preview}" for chapter in chapters[:6])
 
 
+def build_style_guidance(style: str) -> str:
+    if style == "short_drama":
+        return """
+Style guidance for short_drama:
+- Write faster-paced scenes with clear conflict, reversal, and emotional hooks.
+- Prefer adding dialogues[].emotion and at least one scenes[].hook.
+- Use hook to describe the cliffhanger or reversal.
+- Keep dialogue short, direct, and suitable for short-video drama rhythm.
+""".strip()
+
+    if style == "audio_drama":
+        return """
+Style guidance for audio_drama:
+- Emphasize narration, sound effects, and dialogue that can be understood without visuals.
+- Prefer adding at least one scenes[].narration and scenes[].sound_effects.
+- Make action descriptions audible or explain them through narration.
+""".strip()
+
+    return """
+Style guidance for screenplay:
+- Emphasize visual action, blocking, and camera-friendly scene description.
+- Prefer adding dialogues[].emotion and at least one scenes[].shots.
+- Use shots for simple shot suggestions when useful.
+""".strip()
+
+
 def build_prompt(title: str, text: str, style: str) -> str:
+    style_guidance = build_style_guidance(style)
+
     return f"""
 Convert this 3+ chapter novel into a short editable screenplay draft.
 Return one JSON object with these keys: title, script_type, characters, chapters.
 Each chapter must have: chapter_title, summary, scenes.
 Each scene must have: scene_id, location, time, characters, action, dialogues.
 Use at most one scene and one dialogue per chapter.
+Optional extension fields are allowed when they fit the selected script type:
+- dialogues[].emotion for facial expression or speaking emotion.
+- scenes[].shots for screenplay shot suggestions.
+- scenes[].hook for short drama cliffhangers or reversals.
+- scenes[].sound_effects and scenes[].narration for audio drama.
+For the selected script type, try to include its recommended extension fields at least once.
 Important language rules:
 - Keep JSON/YAML keys in English exactly as requested.
 - All values that authors read must be Simplified Chinese.
@@ -103,6 +137,7 @@ Important language rules:
 
 Title: {title or "Untitled"}
 Script type: {style}
+{style_guidance}
 Novel:
 {text}
 """.strip()
