@@ -19,6 +19,8 @@ import {
 import {
   IconAlertCircle,
   IconBook2,
+  IconChevronDown,
+  IconChevronUp,
   IconCircleCheck,
   IconCopy,
   IconDownload,
@@ -322,6 +324,7 @@ function App() {
   const [polishSource, setPolishSource] = useState<"ai" | "fallback" | "">("");
   const [selectedPolishIndex, setSelectedPolishIndex] = useState<number | null>(null);
   const [activeRightTab, setActiveRightTab] = useState<string | null>("preview");
+  const [isNovelInputCollapsed, setIsNovelInputCollapsed] = useState(false);
   const [yamlDraft, setYamlDraft] = useState(sampleYaml);
   const [yamlStatus, setYamlStatus] = useState<YamlStatus>(analyzeYamlText(sampleYaml));
 
@@ -400,6 +403,7 @@ function App() {
           ? "YAML 基础结构有效，可继续编辑和打磨"
           : result.yaml_error || "YAML 校验未通过",
       });
+      setIsNovelInputCollapsed(true);
       setStatusMessage(
         result.warnings.length > 0
           ? result.warnings[0]
@@ -489,6 +493,7 @@ function App() {
         setTitle(fileName.replace(/\.(txt|md)$/i, ""));
       }
       resetGeneratedState();
+      setIsNovelInputCollapsed(false);
       setErrorMessage("");
       setStatusMessage(
         `已导入 ${fileName}，${getInputQualityMessage(
@@ -505,6 +510,7 @@ function App() {
   const handleClearInput = () => {
     setNovelText("");
     resetGeneratedState();
+    setIsNovelInputCollapsed(false);
     setErrorMessage("");
     setStatusMessage("已清空小说输入和生成结果");
   };
@@ -515,6 +521,7 @@ function App() {
       setTitle("雨夜残稿");
     }
     resetGeneratedState();
+    setIsNovelInputCollapsed(false);
     setErrorMessage("");
     setStatusMessage(
       `已填充示例小说，${getInputQualityMessage(countNovelChapters(sampleNovel), countNovelCharacters(sampleNovel))}`,
@@ -545,6 +552,8 @@ function App() {
   const feedbackMessage = yamlStatus.valid ? statusMessage : yamlStatus.message;
   const feedbackColor = errorMessage ? "red" : yamlStatus.valid ? "teal" : "yellow";
   const highlightedYamlLines = buildHighlightedYamlLines(yamlDraft);
+  const hasGeneratedScript = chapterCount > 0 && yamlDraft !== sampleYaml;
+  const showCompactInput = hasGeneratedScript && isNovelInputCollapsed;
   const selectedPolishLocator =
     selectedPolishIndex !== null && polishSuggestions[selectedPolishIndex]
       ? getPolishLocator(polishSuggestions[selectedPolishIndex].category)
@@ -613,7 +622,7 @@ function App() {
               <Stack gap={4}>
                 <Title order={2}>创作工作台</Title>
                 <Text c="dimmed">
-                  左侧整理小说原文，右侧查看结构化剧本、章节摘要和 YAML 编辑区。
+                  先整理小说原文，生成后聚焦查看结构化剧本、章节摘要和 YAML 编辑区。
                 </Text>
               </Stack>
 
@@ -627,7 +636,41 @@ function App() {
                 </Alert>
               )}
 
+              {showCompactInput && (
+                <Paper withBorder p="md" radius="md" className="workspace-card compact-input-summary">
+                  <Group justify="space-between" align="center" gap="md">
+                    <Group gap="xs">
+                      <IconBook2 size={18} />
+                      <Text fw={700}>{title.trim() || "未命名作品"}</Text>
+                      <Badge color="teal" variant="light">
+                        已生成
+                      </Badge>
+                      <Badge color="gray" variant="light">
+                        章节 {inputChapterCount}
+                      </Badge>
+                      <Badge color="gray" variant="light">
+                        字数 {inputCharacterCount}
+                      </Badge>
+                    </Group>
+
+                    <Group gap="xs">
+                      <Button
+                        variant="light"
+                        leftSection={<IconChevronDown size={16} />}
+                        onClick={() => setIsNovelInputCollapsed(false)}
+                      >
+                        编辑小说输入
+                      </Button>
+                      <Button leftSection={<IconPlayerPlay size={16} />} loading={isValidating} onClick={handleValidate}>
+                        重新生成
+                      </Button>
+                    </Group>
+                  </Group>
+                </Paper>
+              )}
+
               <Grid gutter="lg">
+                {!showCompactInput && (
                 <Grid.Col span={{ base: 12, md: 6 }}>
                   <Paper withBorder p="lg" radius="md" className="workspace-card">
                     <Stack>
@@ -754,13 +797,24 @@ function App() {
                           >
                             生成剧本 YAML
                           </Button>
+                          {hasGeneratedScript && (
+                            <Button
+                              variant="subtle"
+                              color="gray"
+                              leftSection={<IconChevronUp size={16} />}
+                              onClick={() => setIsNovelInputCollapsed(true)}
+                            >
+                              收起输入
+                            </Button>
+                          )}
                         </Group>
                       </Group>
                     </Stack>
                   </Paper>
                 </Grid.Col>
+                )}
 
-                <Grid.Col span={{ base: 12, md: 6 }}>
+                <Grid.Col span={{ base: 12, md: showCompactInput ? 12 : 6 }}>
                   <Paper withBorder p="lg" radius="md" className="workspace-card">
                     <Stack>
                     <Group justify="space-between">
