@@ -62,6 +62,31 @@ textarea {
   border-color: #dce3ea;
 }
 
+.polish-location-hint {
+  background: #eefbf8;
+  border: 1px solid #c8eee7;
+}
+
+.polish-suggestion-card {
+  cursor: pointer;
+  border: 1px solid #e6edf3;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.polish-suggestion-card:hover {
+  border-color: #b7d6dc;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.polish-suggestion-card-active {
+  border-color: #24b8b9;
+  box-shadow: 0 0 0 3px rgba(36, 184, 185, 0.12);
+}
+
 .footer-panel {
   background: #ffffff;
   border: 1px solid #e6edf3;
@@ -139,6 +164,15 @@ textarea {
 
 .yaml-code-line:hover {
   background: rgba(148, 163, 184, 0.12);
+}
+
+.yaml-code-line-located {
+  background: rgba(45, 212, 191, 0.14);
+  box-shadow: inset 3px 0 0 #2dd4bf;
+}
+
+.yaml-code-line-located:hover {
+  background: rgba(45, 212, 191, 0.2);
 }
 
 .yaml-line-number {

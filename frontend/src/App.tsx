@@ -250,6 +250,56 @@ function getYamlKeyClassName(key: string): string {
   return "yaml-key-default";
 }
 
+function getPolishLocator(category: string) {
+  if (category.includes("角色")) {
+    return {
+      label: "角色",
+      path: "characters",
+      keys: ["characters", "speaker"],
+      color: "teal",
+      hint: "建议检查角色设定、人物目标和每章行动动机。",
+    };
+  }
+
+  if (category.includes("场景") || category.includes("冲突")) {
+    return {
+      label: "场景",
+      path: "chapters.scenes",
+      keys: ["scenes", "location", "time", "action"],
+      color: "green",
+      hint: "建议检查场景地点、时间、动作和冲突设计。",
+    };
+  }
+
+  if (category.includes("对白") || category.includes("语气")) {
+    return {
+      label: "对白",
+      path: "dialogues",
+      keys: ["dialogues", "speaker", "line"],
+      color: "orange",
+      hint: "建议检查 speaker 和 line，区分角色说话方式。",
+    };
+  }
+
+  if (category.includes("节奏") || category.includes("结构")) {
+    return {
+      label: "节奏",
+      path: "summary / action",
+      keys: ["chapter_title", "summary", "action"],
+      color: "blue",
+      hint: "建议检查章节摘要、场景动作和结尾转折。",
+    };
+  }
+
+  return {
+    label: "结构",
+    path: "script",
+    keys: ["title", "chapters", "scenes"],
+    color: "gray",
+    hint: "建议检查 YAML 中对应的角色、章节或场景内容。",
+  };
+}
+
 function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [title, setTitle] = useState("");
@@ -270,6 +320,8 @@ function App() {
   const [isGeneratingPolish, setIsGeneratingPolish] = useState(false);
   const [polishSuggestions, setPolishSuggestions] = useState<PolishSuggestion[]>([]);
   const [polishSource, setPolishSource] = useState<"ai" | "fallback" | "">("");
+  const [selectedPolishIndex, setSelectedPolishIndex] = useState<number | null>(null);
+  const [activeRightTab, setActiveRightTab] = useState<string | null>("preview");
   const [yamlDraft, setYamlDraft] = useState(sampleYaml);
   const [yamlStatus, setYamlStatus] = useState<YamlStatus>(analyzeYamlText(sampleYaml));
 
@@ -283,6 +335,7 @@ function App() {
     setSelectedChapter("all");
     setPolishSuggestions([]);
     setPolishSource("");
+    setSelectedPolishIndex(null);
     setYamlDraft(sampleYaml);
     setYamlStatus(analyzeYamlText(sampleYaml));
     setGenerationSteps(initialGenerationSteps);
@@ -339,6 +392,7 @@ function App() {
       setSelectedChapter("all");
       setPolishSuggestions([]);
       setPolishSource("");
+      setSelectedPolishIndex(null);
       setYamlDraft(result.yaml);
       setYamlStatus({
         valid: result.yaml_valid,
@@ -394,6 +448,8 @@ function App() {
       const result = await generatePolishSuggestions({ yaml: yamlDraft });
       setPolishSuggestions(result.suggestions);
       setPolishSource(result.source);
+      setSelectedPolishIndex(result.suggestions.length > 0 ? 0 : null);
+      setActiveRightTab("polish");
       setStatusMessage(
         result.source === "ai" ? "AI 打磨建议已生成" : result.warnings[0] || "已生成规则兜底建议",
       );
@@ -489,6 +545,15 @@ function App() {
   const feedbackMessage = yamlStatus.valid ? statusMessage : yamlStatus.message;
   const feedbackColor = errorMessage ? "red" : yamlStatus.valid ? "teal" : "yellow";
   const highlightedYamlLines = buildHighlightedYamlLines(yamlDraft);
+  const selectedPolishLocator =
+    selectedPolishIndex !== null && polishSuggestions[selectedPolishIndex]
+      ? getPolishLocator(polishSuggestions[selectedPolishIndex].category)
+      : null;
+
+  const handleSelectPolishSuggestion = (index: number) => {
+    setSelectedPolishIndex(index);
+    setActiveRightTab("preview");
+  };
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -823,7 +888,7 @@ function App() {
                       </Paper>
                     )}
 
-                    <Tabs defaultValue="preview" className="right-panel-tabs">
+                    <Tabs value={activeRightTab} onChange={setActiveRightTab} className="right-panel-tabs">
                       <Tabs.List grow>
                         <Tabs.Tab value="preview">YAML 预览</Tabs.Tab>
                         <Tabs.Tab value="edit">YAML 编辑</Tabs.Tab>
@@ -855,7 +920,14 @@ function App() {
 
                             <div className="yaml-code-viewer">
                               {highlightedYamlLines.map((line) => (
-                                <div key={line.lineNumber} className="yaml-code-line">
+                                <div
+                                  key={line.lineNumber}
+                                  className={
+                                    selectedPolishLocator?.keys.includes(line.key)
+                                      ? "yaml-code-line yaml-code-line-located"
+                                      : "yaml-code-line"
+                                  }
+                                >
                                   <span className="yaml-line-number">{line.lineNumber}</span>
                                   <code className="yaml-line-content">
                                     {line.key ? (
@@ -884,6 +956,7 @@ function App() {
                             setYamlStatus(analyzeYamlText(nextYaml));
                             setPolishSuggestions([]);
                             setPolishSource("");
+                            setSelectedPolishIndex(null);
                           }}
                           minRows={22}
                           styles={{
@@ -913,19 +986,76 @@ function App() {
                                 </Badge>
                               </Group>
 
-                              <Stack gap={6}>
-                                {polishSuggestions.map((item) => (
-                                  <Paper key={`${item.category}-${item.suggestion}`} p="xs" radius="md" bg="white">
+                              {selectedPolishLocator ? (
+                                <Paper p="xs" radius="md" className="polish-location-hint">
+                                  <Group gap="xs" align="flex-start">
+                                    <Badge color={selectedPolishLocator.color} variant="light">
+                                      {selectedPolishLocator.label}
+                                    </Badge>
                                     <Stack gap={2}>
                                       <Text size="sm" fw={700}>
-                                        {item.category}
+                                        建议检查位置：
+                                        {selectedPolishLocator.path}
                                       </Text>
                                       <Text size="sm" c="dimmed">
-                                        {item.suggestion}
+                                        {selectedPolishLocator.hint}
                                       </Text>
                                     </Stack>
-                                  </Paper>
-                                ))}
+                                  </Group>
+                                </Paper>
+                              ) : (
+                                <Text size="sm" c="dimmed">
+                                  点击任意建议，查看推荐检查的 YAML 位置。
+                                </Text>
+                              )}
+
+                              <Stack gap={6}>
+                                {polishSuggestions.map((item, index) => {
+                                  const locator = getPolishLocator(item.category);
+                                  const isActive = selectedPolishIndex === index;
+
+                                  return (
+                                    <Paper
+                                      key={`${item.category}-${item.suggestion}`}
+                                      p="xs"
+                                      radius="md"
+                                      bg="white"
+                                      className={
+                                        isActive
+                                          ? "polish-suggestion-card polish-suggestion-card-active"
+                                          : "polish-suggestion-card"
+                                      }
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => handleSelectPolishSuggestion(index)}
+                                      onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                          event.preventDefault();
+                                          handleSelectPolishSuggestion(index);
+                                        }
+                                      }}
+                                    >
+                                      <Stack gap={2}>
+                                        <Group justify="space-between" gap="xs" align="flex-start">
+                                          <Text size="sm" fw={700}>
+                                            {item.category}
+                                          </Text>
+                                          <Group gap={6}>
+                                            <Badge color={locator.color} variant="light">
+                                              {locator.label}
+                                            </Badge>
+                                            <Badge color="gray" variant="outline">
+                                              {locator.path}
+                                            </Badge>
+                                          </Group>
+                                        </Group>
+                                        <Text size="sm" c="dimmed">
+                                          {item.suggestion}
+                                        </Text>
+                                      </Stack>
+                                    </Paper>
+                                  );
+                                })}
                               </Stack>
                             </Stack>
                           </Paper>
