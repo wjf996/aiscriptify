@@ -17,7 +17,8 @@ def convert_novel_to_script(title: str, text: str, style: str) -> dict:
         {
             "role": "system",
             "content": (
-                "Return compact valid JSON only. Do not use Markdown. "
+                "Return one compact valid JSON object only. Do not use Markdown, code fences, "
+                "comments, explanations, or any text before or after the JSON object. "
                 "Keep the answer short. Use Simplified Chinese for all user-facing values."
             ),
         },
@@ -123,6 +124,7 @@ Return one JSON object with these keys: title, script_type, characters, chapters
 Each chapter must have: chapter_title, summary, scenes.
 Each scene must have: scene_id, location, time, characters, action, dialogues.
 Use at most one scene and one dialogue per chapter.
+Return valid JSON only. Do not include Markdown fences, comments, or explanatory text.
 Optional extension fields are allowed when they fit the selected script type:
 - dialogues[].emotion for facial expression or speaking emotion.
 - scenes[].shots for screenplay shot suggestions.
@@ -134,6 +136,7 @@ Important language rules:
 - All values that authors read must be Simplified Chinese.
 - Do not translate Chinese character names into English or pinyin.
 - location, time, action, summary, dialogue lines, and character names must be Chinese.
+- Infer location, time, and emotion from the novel text whenever possible. Avoid placeholder values like 待补充地点, 待补充时间, or 待补充情绪.
 
 Title: {title or "Untitled"}
 Script type: {style}
