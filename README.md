@@ -169,7 +169,9 @@ npm run build
 
 ## Demo 视频
 
-Demo 视频链接：[aiscriptify 演示视频](https://www.bilibili.com/video/BV1pLEJ6zEFj/)
+Demo 视频链接：https://www.bilibili.com/video/BV1pLEJ6zEFj/
+
+也可以点击：[aiscriptify 演示视频](https://www.bilibili.com/video/BV1pLEJ6zEFj/)
 讲解脚本见：
 
 [docs/demo-script.md](docs/demo-script.md)
